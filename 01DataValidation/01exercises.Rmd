@@ -1,0 +1,260 @@
+---
+title: 'Exercises: data validation'
+author: "Mark van der Loo"
+date: "Statistics Netherlands"
+output: 
+  pdf_document:
+    includes: 
+      in_header: ../00tex/header.tex
+params:
+  answers: FALSE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#### Before we start.
+
+1. Set up a new RStudio project called 'datacleaning'. RStudio will create a new
+directory called `datacleaning` (make sure  you can find that directory with your
+file browser).
+2. Copy the files `SBS2000.csv` and `rules.R` into the `datacleaning` directory.
+3. Read the data into your R session using the following code.
+```{r}
+SBS2000 <- read.csv("SBS2000.csv",stringsAsFactors = FALSE)
+```
+
+Use functions such as `head()` and `summary()` to acquaint yourself with this
+data. Play around for a few minnutes and make some plots and descriptive
+statistics.
+
+#### Note
+
+Always work in an R script, and use `<CTRL>+<ENTER>` to execute your code.
+Working in the command-line directly is a bad practice that makes all your work
+irreproducible.
+
+
+
+#### Exercise 1: Validating data with `validate`
+
+The validate package provides a data validation infrastructure for R. To get
+started, try the following code.
+
+```{r, echo=TRUE, results='hide', fig.show='hide'}
+library(validate)
+
+# define a ruleset
+rules <- validator(
+  turnover >= 0
+  , other.rev >= 0
+  , turnover + other.rev == total.rev
+  , if (staff > 0) staff.costs > 0
+)
+# print the ruleset
+rules
+
+# confront data with rules
+result <- confront(SBS2000, rules)
+
+# print results
+result
+
+# summarise results
+summary(result)
+
+# visualize results
+plot(result)
+```
+
+Also try the following
+```{r, echo=TRUE, results='hide', eval=FALSE}
+dat <- as.data.frame(result)
+View(result)
+```
+Interpret the results, and answer the following questions.
+
+a. How many records violate the rule `other.rev >= 0`?
+b. Take a close look at `summary(result)`. Explain why there are differences 
+beteen the `expression` column and the rule that we defined above.
+c. Which rule was violated most often?
+d. Why are there 37 `NA`s for rule `V3`?
+
+
+#### Terminology
+
+- **validator.** Rules are stored in an object of class `validator`. 
+- **validation.** The results of a `confront`ation are stored in an object
+of class `validation`.
+
+
+#### Exercise 2. Reading rule sets from file
+
+Try the following code (note the `.` in `.file=`).
+```{r}
+myrules <- validator(.file="rules.R")
+```
+
+
+a. Open the file `rules.R` Think of at least 8 extra rules for this data set,
+add them (with comments) to the file; read the rule set and confront the data
+with the rules. Make summaries and plots.
+b. What rule is violated most often? 
+c. Which records violate most rules? See the help files of the
+`sort` and `aggregate` methods for validation objects. 
+```{r, eval=FALSE}
+?`sort.validation-method`
+?`aggregate.validation-method`
+```
+Or if you are familiar with it, use methods from the `dplyr` package to get this
+information from `as.data.frame(your result)`.
+
+#### Exercise 3. More rule syntax
+
+In `validate`, any R expression that results in a `logical` (boolean) result
+is accepted as a _validation rule_. A concise overview can be found in `?syntax`.
+
+
+a. Add the following rules to `rules.R`, and analyse the results after confronting them with the data.
+    - The average profit must be larger than or equal to zero.
+    - The covariance between staff and turnover must be larger than zero (more
+    staff is on average associated with more turnover). See `?cov` and choose an
+    appropriate manner to handle missing data (parameter `"use="`).
+    - `size` must be  one of `"sc0"`, `"sc1"`, `"sc2"`, or `"sc3"` (tip: use the `%in%` operator).
+    - `inc.prob` must be nonnegative and not larger than 1.
+
+
+b. It is possible to check types: any function starting with `is.` is
+allowed as validating function, e.g. the following rule checks that
+`staff` is numeric.
+```{r, eval=FALSE}
+is.numeric(staff)
+```
+Add the folowing rules to `rules.R`, and analyse the results after confronting
+them with the data.,
+    - Ensure that the numeric variables are actually of type `numeric`.
+    - Ensure that `id` is of class `character`.
+
+
+In `validate`, you can create 'variable groups' for sets of variables that
+need to satisfy the same rule. For example, in `rules.R`
+```{r, eval=FALSE}
+G := var_group(id, size)
+is.character(G)
+```
+is equivalent to
+```{r, eval=FALSE}
+is.character(id)
+is.character(size)
+```
+
+c. Use variable groups to check for all numeric data whether they satisfy `is.numeric`.
+(i.e. simplyfy the previous code).
+
+
+
+
+
+
+In `validate` rules are expressed using variable names as they occur as
+column names in the data set. It is also possible to refer to the data set as
+a whole, using the "`.`". Syntax. For example, the following rule states that
+there must be at least 50 rows.
+
+```{r, eval=FALSE}
+nrow(.) >= 50
+```
+
+d. Add the following rules to `rules.R` and analyse the results after confronting
+them with the data.
+    - Number of rows must be larger than or equal to 50
+    - Number of columns must equal 11
+    - The column `id` must exist (hint: use `names(.)`).
+    
+    
+e. Consider again the Statistical Value Chain, and the rules now present in 
+`rules.R`. Which demands apply to `Raw` data, which to `Input`
+data and which to `Valid` data? Put the rules into different files accordingly.
+
+
+#### Exercise 4 (theory). Validation functions
+
+Explain why the following are, or are not data validation functions.
+
+a.
+$$
+v(x,y) = \left\{\begin{array}{l}
+\texttt{TRUE} \textrm{ if } x + y = 3\textrm{ and } x-y = 0\textrm{ and }x \leq1\\
+\texttt{FALSE} \textrm{ otherwise}
+\end{array}
+\right.
+$$
+
+b.
+$$
+v(x) = \left\{\begin{array}{l}
+\texttt{TRUE} \textrm{ if } x \geq 3 \textrm{ and } x \geq 5 \\
+\texttt{FALSE} \textrm{ otherwise}
+\end{array}
+\right.
+$$
+
+c.
+$$
+v(x) = \left\{\begin{array}{l}
+\texttt{TRUE} \textrm{ if } x \leq 10 \textrm{ or } x \geq 3\\
+\texttt{FALSE} \textrm{ otherwise}
+\end{array}
+\right.
+$$
+
+```{r, echo=params$answers}
+# a. No. The three demands cannot all be TRUE at the same time, 
+#    so v is FALSE everywhere.
+# b. Yes, although there is redundancy (we can leave x>=3 out).
+# c. No, this ALWAYS results in TRUE so it does not validate anything.
+```
+
+
+
+
+#### Exercise 5. Reporting
+
+Use `rmarkdown` to generate a data quality report (pdf of HTML). The report
+should be fully automated so it must:
+
+1. Read the data file and read the rules.
+2. Confront the data with the rules
+3. Show a few tables and plots.
+
+This is a free assignment: use your imagination!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

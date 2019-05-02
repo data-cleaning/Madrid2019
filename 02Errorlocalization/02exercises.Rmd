@@ -1,0 +1,108 @@
+---
+title: 'Exercises: error localization'
+author: "Mark van der Loo"
+date: "Statistics Netherlands"
+output: 
+  pdf_document:
+    includes: 
+      in_header: ../00tex/header.tex
+params:
+  answers: TRUE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#### Before we start.
+
+1. In RStudio go to `tools->global options`. Under `Workspace`, make sure that
+the option "`Restore .RData into workspace at startup`" has been switched off.
+2. Press `<CTRL>+<SHIFT>+<F10>` to start a clean R session (in the same project).
+
+
+We will keep using the `SBS2000.csv` dataset. So read it again.
+```{r, echo=params$answers}
+SBS2000 <- read.csv("SBS2000.csv", stringsAsFactors=FALSE)
+```
+
+\begin{picture}(0,0)
+\put(350,-30){
+\includegraphics[height=3cm]{fig/rstudio.png}
+}
+\end{picture}
+
+
+#### Exercise 1
+
+The `errorlocate` package has two principal functions:
+
+- `locate_errors()` Localize errors based on the FH principle.
+- `replace_errors()` Localize errors and replace them with other (or missing) values.
+
+Load the `errorlocate` package.
+```{r, messages=FALSE, results='hide'}
+library(errorlocate)
+```
+
+a. Use `validator` to load the rules in `SBSrules.R` as `rules`
+b. Print `rules` to see the validation rule set.
+```{r, echo=params$answers, fig.show='hide', results='hide'}
+rules <- validator(.file='SBSrules.R')
+rules
+```
+c. Try the following code.
+```{r}
+el <- locate_errors(SBS2000, rules)
+```
+d. Use `summary` to summarize the results. Which variable is deemed erroneous
+most often?
+
+#### Exercise 2: weights.
+
+Experts have indicated the following reliability weights for the SBS2000 variables.
+
+\begin{tabular}{ll|ll}
+staff       & 1   & turnover  & 1\\
+other.rev   & 0.5 & total.rev & 1\\
+staff.costs & 0.5 & profit    & 0.5\\
+vat         & 1
+\end{tabulad}
+
+a. Use these weights in error localization (see `?locate_errors`). Note: you
+need to supply a weight vector of length `ncol(SBS2000)`. A simple option is to
+add weights equal to 1 for the variables that are not checked. Store the result as
+`el2`.
+```{r, echo=params$answers, results='hide'}
+weight <- rep(1,ncol(SBS2000))
+names(weight) <- names(SBS2000)
+weight[c("other.rev","staff.costs","profit")] <- 0.1
+
+el2 <- locate_errors(SBS2000, rules, weight=weight)
+summary(el2)
+```
+b. Compare the `summary` of `el` and `el2` are different variables
+assigned as erroneous?
+c. Use the following scaling rule to transform the weights, locate errors again, and compare your results.
+$$
+w'_j = 1 + \frac{w_j-w^{min}}{w^{max}-w^{min}}\times\frac{1}{n}
+$$
+
+```{r,echo=params$answers, results='hide'}
+wmin <- min(weight)
+wmax <- max(weight)
+weight1 <- 1 + (weight-wmin)/(wmax-wmin)*1/length(weight)
+# Note, we could reduce 'n' here, since the nr of variables
+# occurring in the rules is smaller than the nr of variables 
+# in the dataset. 
+el3 <- locate_errors(SBS2000, rules, weight=weight1)
+summary(el3)
+```
+
+
+
+
+
+
+
+

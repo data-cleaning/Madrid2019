@@ -1,0 +1,245 @@
+---
+title: "Methods for deterministic correction"
+author: "Mark van der Loo, Statistics Netherlands"
+date: "Complutense University of Madrid, Spring 2019"
+output: 
+  beamer_presentation:
+    include:
+      in_header: ../00tex/presheader.tex
+classoption: "aspectratio=169"
+---
+
+## General strategy in data correction
+
+- Use information stored as validation rules, and information from
+    0. systematic domain knowledge (correction rules)
+    1. faulty cells (e.g. spelling errors)
+    2. other, correct cells (deriving values)
+    3. other records (imputation)
+    4. other files/sources (manual correction)
+
+## Correction based on domain knowledge
+
+### Example
+
+- Irrelevant fields are often left open (in stead of filing zero)
+- Costs are sometimes reported negative (but can be made positive)
+- A surplus on a balance can be moved to a 'rest' post.
+
+### Common idea
+
+`IF` some data condition holds `THEN` perform a standard activity.
+
+
+## Domain knowledge should be separated from process flow
+
+\begin{center}
+\includegraphics[]{fig/datastep.pdf}
+\end{center}
+
+
+## `dcmodify`: externalize domain knowledge
+
+```{r, results='hide'}
+library(dcmodify)
+SBS2000 <- read.csv("SBS2000.csv", stringsAsFactors = FALSE)
+mod <- modifier(
+    if (other.rev < 0) other.rev <- -1 * other.rev
+  , if (staff.costs/staff > 1000) staff.costs <- staff.costs/1000
+)
+modify(SBS2000, mod)
+```
+
+
+## `dcmodify`: externalize domain knowledge
+
+
+### Similar to `validate` 
+
+- Read rules from CLI or file
+- Rules with metadata
+- Apply rules
+
+
+\begin{picture}(0,0)
+\put(180,20){\includegraphics[]{fig/dcmodify.pdf}}
+\end{picture}
+
+
+# Deductive correction
+
+## Deductive correction
+
+
+### Deductive correction
+
+- A set of methods specific to error circumstances
+- Given the ruleset and the faulty data, can we reconstruct what went wrong?
+
+## Method: Spelling errors in numbers.
+
+### Observed data:
+
+\begin{tabular}{rr}
+turnover &  1024 \\
+costs    &  435  \\
+\hline
+profit   &  598
+\end{tabular}
+
+### Note
+
+- $1024-435 = 589\not=598$ (so error) 
+- The difference $598 - 589$ = 9 is divisable by 9.
+
+### Proposition
+
+Given a balance rule $\sum_ix_i - t=0$. If for some record $(\boldsymbol{x},t)$
+the value $\sum_{i}x_i-t$ is divisable by 9, then the record can be repaired
+by transposition of two digits in one of the variables $x_i$ or $t$.
+
+\hfill{}\scriptsize{} Scholtus (2009) Discussion paper 09049 (CBS)\normalsize{}
+
+## Algorithm (sketch)
+
+- Input: integer record, set of linear balance restrictions
+- For each variable in each violated rule
+    - Solve for that variable
+    - Check if the solution is a typing error away from the original
+
+\hfill{}\scriptsize{}SDCR \S9.3\normalsize{}
+
+### A single typing error
+
+deletion, insertion, or substitution of a digit, or transposition
+of two adjacent digits.
+
+
+## Application
+
+```{r}
+library(validate)
+library(deductive)
+
+d <- data.frame(turnover = 1024, costs = 435, profit = 598)
+rules <- validator(turnover - costs == profit)
+correct_typos(d, rules)
+
+```
+
+\begin{picture}(0,0)
+\put(180,-20){\includegraphics[]{fig/correct_typos.pdf}}
+\end{picture}
+
+
+
+## Method: deductive imputation
+
+
+### Observed data:
+
+\begin{tabular}{rr}
+turnover &  1024 \\
+costs    &  NA  \\
+\hline
+profit   &  589
+\end{tabular}
+
+### Note
+
+We can derive the value of _costs_ using the rule 
+
+```
+turnover - costs == profit
+```
+
+## Method: deductive imputation
+
+### Observed costs:
+
+\begin{tabular}{rr}
+housing   &  1024 \\
+transport &  NA   \\
+staff     &  NA   \\
+interest  &  300  \\
+\hline
+total     &  1324 
+\end{tabular}
+
+### Observe
+
+Since all variables must be nonnegative, the only possible value for
+_transport_ and _staff_ is zero.
+
+
+# Deductive imputation
+
+## Method: deductive imputation
+
+```{r}
+library(validate)
+library(deductive)
+
+d <- data.frame(housing=1024, transport=NA, staff=NA, interest=300
+              , total=1324)
+rules <- validator(housing >= 0, transport >= 0, staff >=0, interest >=0
+                   , housing + transport + staff + interest == total )
+impute_lr(d,rules)
+```
+
+
+## General method for deductive imputation (sketch)
+
+Set of restrictions $\boldsymbol{Ax}=\boldsymbol{b}$. Split according
+to observed and missing:
+
+$$
+[\boldsymbol{A}_o,\boldsymbol{A}_m]\left(\begin{array}{c}
+\boldsymbol{x}_o\\ \boldsymbol{x}_m
+\end{array}\right)
+=\boldsymbol{b}
+$$
+Then, depending on the number and structure of missings, some elements of $\hat{\boldsymbol{x}}_m$
+are uniquely determined.
+$$
+\hat{\boldsymbol{x}}_m = \boldsymbol{A}^+(\boldsymbol{b}-\boldsymbol{A}_o\boldsymbol{x}_o)
++(\boldsymbol{1}-\boldsymbol{A}^+_m\boldsymbol{A}_m)\boldsymbol{w}
+$$
+
+- $\boldsymbol{A}^+$: Moore-Penrose inverse of $\boldsymbol{A}$
+- $\boldsymbol{w}\in\mathbb{R}^{|m|}$ ($|m|$ is nr of missings in $\boldsymbol{x}$).
+
+\hfill{}\scriptsize{}SDCR \S9.3\normalfont{}
+
+## The good news
+
+### R package `deductive`
+
+`deductive::impute_lr` tries all these methods iteratively untill nothing 
+more can be imputed, based on these methods.
+
+\begin{picture}(0,0)
+\put(180,-50){\includegraphics[]{fig/impute_lr.pdf}}
+\end{picture}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

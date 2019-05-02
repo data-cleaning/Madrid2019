@@ -1,0 +1,138 @@
+---
+title: 'Exercises: deterministic data correction'
+author: "Mark van der Loo"
+date: "Statistics Netherlands"
+output: 
+  pdf_document:
+    includes: 
+      in_header: ../00tex/header.tex
+params:
+  answers: FALSE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#### Exercise 1. Data correction with `dcmodify` and comparing data versions
+
+The `dcmodify` package lets you define and administer data modifying rules,
+much in the same way you can define and use data validation ruls in the `validate`
+package.
+
+Try the following code.
+
+```{r}
+library(dcmodify)
+SBS2000 <- read.csv("SBS2000.csv",stringsAsFactors = FALSE)
+out <- modify_so(SBS2000
+      , if ( other.rev < 0 ) other.rev <- -1*other.rev)
+```
+
+Or, if you like the 'pipe' interface of the `magrittr` package, you can
+do 
+```{r}
+library(dcmodify)
+library(magrittr)
+out <- SBS2000 %>%
+  modify_so( if (other.rev < 0) other.rev <- -1*other.rev )
+```
+
+We can use the function `cells` of the validate package to compare the two 
+versions of our data.
+```{r, results='hide'}
+library(validate)
+cells(SBS2000, out)
+```
+
+a. Read the helpfile of `?cells` and interpret the output.
+
+
+You can create a `modifier` by reading a rule set from file, just like you can
+do it in `validate`:
+
+```{r, eval=FALSE}
+mod <- modifier(.file="/path/to/your/file.R")
+```
+
+All rules in `dcmodify` are of the form
+```{r, eval=FALSE}
+if (condition) do something
+```
+It is possible to have nested if-statements:
+```{r, eval=FALSE}
+if (condition1){
+  if (condition2){
+    do something
+  }
+}
+```
+Currently, `if-else` statements are not yet supported.
+
+b. Create a file called `modifications.R`, and state in it the following rules.
+    - If `other.rev` is negative, flip the sign (as in the example)
+    - If `other.rev` is missing, make it equal to zero.
+    - If `turnover + other.rev` does not equal `total.rev`, and the difference
+    is positive: assign the difference to `other.rev`
+c. Apply the rules in `modifications.R` to `SBS2000`. Compare the difference between
+in- and output with `cells`.
+d. Do you think that the order of rule execution is important for the result? Argue
+why.
+
+#### Exercise 2. comparing data versions using rule sets
+
+The function `compare` of the `validate` package allows you to compare
+versions of a dataset with respect to a rule set. Try the following code.
+
+```{r, results='hide'}
+rules <- validator(turnover >= 0, other.rev>=0, turnover + other.rev>=total.rev)
+
+out <- modify_so(SBS2000, if (other.rev < 0) other.rev <- -1*other.rev)
+compare(rules, SBS2000, out)
+```
+
+**Exercise:** Read the help file of `?compare` to interpret the result. Which 
+validations have changed? What rules and records are involved?
+
+
+#### Exercise 3: combining steps.
+
+We would like the SBS2000 dataset to satisfy the following rules.
+
+```{r,eval=FALSE}
+turnover >= 0
+other.rev >= 0
+turnover + other.rev >= 0
+total.costs >= 0
+turnover - total.costs == profit
+```
+
+In this exercise we will repair a number of flaws using deterministic methods.
+In particular, you can use
+
+- the `validate` package
+- `modify`, or `modify_so` from the `dcmodify` package
+- `correct_typos`, `impute_lr` from the `deductive` package.
+- `replace_errors` from the `errorlocate` package.
+
+**Exercise** Use the above functions and try to improve the data set step by
+step (you will probably not be able to fix everything, that's ok). You can use
+`validate::compare` or `validate::cells` to monitor changes as you create
+versions of your dataset. While you experiment, try to think the following
+questions:
+
+  - What is a good order for the cleaning steps?
+  - Should the number of passing validations strictly increase at every step? Is it 
+    'allowed' to decrease the number of passing validations in a step? If so, under what circumstances?
+
+
+
+
+
+
+
+
+
+
+
+
