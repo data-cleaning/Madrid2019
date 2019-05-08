@@ -105,6 +105,29 @@ read.csv("cellwise.csv") %L>% head(3)
 ```
 \normalsize{}
 
+## Background
+
+The pipe is a sort of _function composition_ operator.
+```{r,eval=FALSE}
+# Pseudocode:
+`%>%` <- function(x, fun){
+  return( fun(x) )
+}
+```
+
+The `lumberjack` does some extra things:
+```{r, eval=FALSE}
+# Pseudocode
+%L>% <- function(x, fun){
+  y <- fun(x)
+  if ( logger_attached_to(x) ){
+    logger <- get_logger(x)
+    logger$add_difference(x,y)
+  }
+  return(y)
+}
+ 
+```
 
 
 
