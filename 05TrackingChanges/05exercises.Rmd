@@ -1,0 +1,76 @@
+---
+title: 'Exercises: deterministic data correction'
+author: "Mark van der Loo"
+date: "Statistics Netherlands"
+output: 
+  pdf_document:
+    includes: 
+      in_header: ../00tex/header.tex
+params:
+  answers: FALSE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#### Exercise 1. The cellwise logger
+
+Try the following code.
+```{r, results='hide', warning=FALSE}
+library(lumberjack)
+library(dplyr)
+SBS2000 <- read.csv("SBS2000.csv")
+logger <- cellwise$new(key="id")
+
+out <- SBS2000 %L>%
+  start_log(logger) %L>%
+  mutate(ratio=profit/total.rev) 
+
+View(logger$logdata())
+```
+
+*Exercise:* Use `%L>%` and `filter` to remove records with `ratio > 10E3` from `out`. Look at the logging data again. 
+
+We now remove the logger.
+```{r}
+rm(logger)
+```
+
+
+#### Excercise 2. The `cells` logger
+
+Other packages, like `validate`, can define loggers for `lumberjack`. The `cells` logger summarizes
+changes in cells.
+```{r}
+library(validate)
+logger <- lbj_cells()
+```
+
+Look at the following data processing pipeline.
+```{r}
+library(errorlocate)
+library(simputation)
+rules <- validator(.file="ruleset.R")
+SBS2000 %>%
+  replace_errors(rules) %>%
+  impute_rlm(turnover ~ profit) %>%
+  impute_rlm(turnover ~ staff) -> output
+```
+
+**Exercise:** Adapt the above code so all changes and imputations are logged. Make sure you use `dump_log()` to
+write the logging data to `csv` and read the data in afterwards.
+
+### Exercise 3 (open exercise). 
+
+Clean up `turnover`, `total.costs` and `profit` from the SBS2000 dataset. A few pointers:
+
+- Define a few meaningful rules
+- You can use everything you have learned before. 
+
+Compute the average turnover, profit and total costs after cleanup.
+
+Try different imputation methods, error localization weights, and so on. What is their influence on the outcome?
+
+
+

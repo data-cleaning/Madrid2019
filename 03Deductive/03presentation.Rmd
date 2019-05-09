@@ -132,6 +132,7 @@ correct_typos(d, rules)
 \end{picture}
 
 
+# Deductive imputation
 
 ## Method: deductive imputation
 
@@ -172,7 +173,6 @@ Since all variables must be nonnegative, the only possible value for
 _transport_ and _staff_ is zero.
 
 
-# Deductive imputation
 
 ## Method: deductive imputation
 

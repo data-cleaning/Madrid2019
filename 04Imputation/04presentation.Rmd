@@ -22,9 +22,6 @@ Adjust (imputed) fields to satisfy linear (in)equality constraints.
 
 
 
-# Imputation with `simputation`
-
-
 ## Missing data
 
 \begin{center}
@@ -131,7 +128,7 @@ install.packages("simputation", dependencies = TRUE)
 library(simputation); library(magrittr)
 data(retailers,package="validate")
 ret <- retailers[3:6]
-ret %>% impute_lm(other.rev ~ turnover) %>% head()
+ret %>% impute_lm(other.rev ~ turnover) %>% head(3)
 ```
 
 
@@ -141,7 +138,7 @@ ret %>% impute_lm(other.rev ~ turnover) %>% head()
 library(simputation)
 data(retailers,package="validate")
 ret <- retailers[3:6]
-ret %>% impute_lm(other.rev ~ turnover) %>% head()
+ret %>% impute_lm(other.rev ~ turnover) %>% head(3)
 ```
 
 
@@ -149,7 +146,7 @@ ret %>% impute_lm(other.rev ~ turnover) %>% head()
 
 ```{r,results='hide'}
 # note the 'rlm'!
-ret %>% impute_rlm(other.rev ~ turnover) %>% head()
+ret %>% impute_rlm(other.rev ~ turnover) %>% head(3)
 ```
 
 
@@ -157,7 +154,7 @@ ret %>% impute_rlm(other.rev ~ turnover) %>% head()
 
 ```{r}
 # note the 'rlm'!
-ret %>% impute_rlm(other.rev ~ turnover) %>% head()
+ret %>% impute_rlm(other.rev ~ turnover) %>% head(3)
 ```
 
 ## The `simputation` package
@@ -188,32 +185,28 @@ impute_<model>(data
 ```{r}
 ret %>% 
   impute_rlm(other.rev ~ turnover) %>%
-  impute_rlm(other.rev ~ staff) %>% head()
+  impute_rlm(other.rev ~ staff) %>% head(3)
 ```
 
 
 ## Assignment 3
 
-Adapt this code so `turnover` is imputed, based on turnover and staff.
+Expand this code so that `turnover` is also imputed, using on `other.rev` and `staff` as predictors.
 
 ```{r,results='hide'}
 ret %>% 
   impute_rlm(other.rev ~ turnover) %>%
-  impute_rlm(other.rev ~ staff) %>% head()
+  impute_rlm(other.rev ~ staff) %>% head(3)
 ```
 
 ## (One) solution
-
-
 
 ```{r,results='hide'}
 ret %>% 
   impute_rlm(other.rev ~ turnover) %>%
   impute_rlm(other.rev ~ staff) %>% 
-  impute_rlm(turnover ~ staff + other.rev) %>% head()
+  impute_rlm(turnover ~ staff + other.rev) %>% head(3)
 ```
-
-
 
 
 ## Example: Multiple variables, same predictors
