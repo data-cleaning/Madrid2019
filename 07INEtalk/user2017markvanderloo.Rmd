@@ -1,0 +1,296 @@
+---
+title: "Easy imputation with the simputation package"
+author: "Mark van der Loo"
+date: ""
+output: 
+  beamer_presentation:
+    fig_caption: false
+    includes:
+      in_header: tex/header.tex
+header-includes:
+- \titlegraphic{\vspace{-1.5cm}\includegraphics[width=4cm]{fig/useR2017logo.jpg}}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(simputation)
+library(magrittr)
+library(lumberjack)
+```
+
+
+## Example data
+
+```{r}
+data(retailers, package='validate')
+ret <- retailers[3:7]
+head(ret, 3)
+```
+
+
+\begin{picture}(0,0)
+\put(266,123){\includegraphics[height=1.5cm]{fig/shopping-cart.png}}
+\end{picture}
+
+
+
+## Imputation in R
+
+### Specialized packages
+
+  - Many available (VIM, mice, Amelia, mi, $\ldots$)
+  - Interfaces vary (a lot)
+
+### DIY with model/predict
+
+```{r, eval=FALSE, echo=TRUE}
+m <- lm(Y ~ X, data=mydata)
+ina <- is.na(mydata$Y)
+mydata[ina, "Y"] <- predict(m, newdata = mydata[ina,])
+```
+
+- Code duplication, doesn't always work
+
+\begin{picture}(0,0)
+\put(260,150){\includegraphics[height=1.8cm]{fig/work.png}}
+\end{picture}
+
+
+\note{
+When I set up an imputation system, I think about the problem, implement and 
+test it, evaluate and repeat. These widely varying interfaces slow down this
+cycle significantly.
+}
+
+## Idea of the simputation package
+
+### Provide
+
+- a _uniform interface_,
+- with _consistent behaviour_,
+- across _commonly used methodologies_
+
+
+### To facilitate
+
+- experimentation 
+- configuration for production
+
+\begin{picture}(0,0)
+\put(270,120){\includegraphics[height=1.8cm]{fig/lightbulb.png}}
+\end{picture}
+
+
+
+## The simputation interface
+
+```
+impute_<model>(data
+  , <imputed vars> ~ <predictor vars>
+  , [options])
+```
+
+### Example: linear model imputation
+
+```{r}
+impute_lm(ret, other.rev ~ turnover) %>% head(3)
+```
+
+\note{
+For any imputation there are three things to specify:
+\begin{itemize}
+\item The method used
+\item The imputed variable
+\item The predictor variables
+\end{itemize}
+}
+
+\begin{picture}(0,0)
+\put(270,170){\includegraphics[height=1.5cm]{fig/pushbutton.png}}
+\end{picture}
+
+## Example: chaining imputations
+
+```{r}
+ret %>% 
+  impute_lm(other.rev ~ turnover + staff) %>% 
+  impute_lm(other.rev ~ staff) %>%
+  head(3)
+```
+
+\begin{picture}(0,0)
+\put(270,130){\includegraphics[height=1.8cm]{fig/gears.png}}
+\end{picture}
+
+
+
+## Example: robust imputation ($M$-estimation) 
+
+```{r}
+ret %>% 
+  impute_rlm(other.rev ~ turnover + staff) %>% 
+  impute_rlm(other.rev ~ staff) %>%
+  head(3)
+```
+
+\begin{picture}(0,0)
+\put(270,130){\includegraphics[height=1.8cm]{fig/gears.png}}
+\end{picture}
+
+
+## Example: Multiple variables, same predictors
+
+```{r,eval=FALSE}
+ret %>% 
+  impute_rlm(other.rev + total.rev ~ turnover) 
+
+ret %>% 
+  impute_rlm( . - turnover ~ turnover) 
+```
+
+\begin{picture}(0,0)
+\put(270,80){\includegraphics[height=1.5cm]{fig/copy.png}}
+\end{picture}
+
+
+## Example: grouping
+
+```{r, eval=FALSE}
+retailers %>% impute_rlm(total.rev ~ turnover | size) 
+
+# or, using dplyr::group_by
+retailers %>% 
+  group_by(size) %>%
+  impute_rlm(total.rev ~ turnover)
+```
+
+\begin{picture}(0,0)
+\put(270,130){\includegraphics[height=1.4cm]{fig/groups.png}}
+\end{picture}
+
+## Example: add random residual
+
+```{r, eval=FALSE}
+retailers %>% impute_rlm(total.rev ~ turnover | size,
+                         add_residual="observed")
+
+retailers %>% impute_rlm(total.rev ~ turnover | size,
+                         add_residual="normal") 
+```
+
+\begin{picture}(0,0)
+\put(260,120){\Huge$\boldsymbol{+\varepsilon}$}
+\end{picture}
+
+
+## Example: train on `A`, apply to `B`
+
+```{r,eval=FALSE}
+m <- MASS::rlm(other.rev ~ turnover + staff
+               , data=retailers)
+impute(ret, other.rev ~ m) 
+```
+
+\begin{picture}(0,0)
+\put(270,80){\includegraphics[height=1.5cm]{fig/recycle.png}}
+\end{picture}
+
+## Currently available methods
+
+
+- Model based (optional random residual):
+    - standard/$M$/elasticnet regression 
+    - CART models and Random forest
+- Multivariate
+    - EM-based imputation
+    - missForest (=iterative random forest)
+- Donor imputation (including various donor pool specifications)
+    - k-nearest neigbour (based on [gower](https://cran.r-project.org/package=gower)'s distance)
+    - sequential, random hotdeck
+    - Predictive mean matching
+- Other
+    - (groupwise) median imputation (optional random residual)
+    - Proxy imputation: copy another variable or use a simple transformation
+      to compute imputed values.
+
+\begin{picture}(0,0)
+\put(260,160){\includegraphics[height=2.0cm]{fig/toolkit.png}}
+\end{picture}
+
+
+## Who imputed what? Ask the lumberjack!
+
+### Lumberjack
+
+A _pipe operator_ that _logs changes in data_.
+
+### Provides
+
+- `%>>%`: the lumberjack operator
+- `start_log()`: start loggin'
+- `dump_log()` : dump log to file
+- `stop_log()` : end loggin'
+- Several loggers
+
+### Fully extendable
+- Users can provide their own loggers
+
+\begin{picture}(0,0)
+\put(275,150){\includegraphics[height=2.3cm]{fig/lumberjack.jpg}}
+\end{picture}
+
+
+
+## Example
+
+\scriptsize
+```{r}
+ret$id <- seq_len(nrow(ret))
+logger <- cellwise$new(key="id")
+imputed <- ret %>>%
+  start_log(logger) %>>%
+  impute_rlm(other.rev ~ total.rev + staff) %>>%
+  impute_median(other.rev ~ 1) %>>%
+  dump_log(stop=TRUE)
+read.csv("cellwise.csv") %>>% head(3)
+```
+\normalsize
+
+
+
+## Some pointers
+
+### Getting started
+```{r,eval=FALSE}
+install.packages('simputation', dependencies = TRUE)
+install.packages('lumberjack')
+```
+```{r, eval=FALSE}
+vignette("intro",package="simputation")
+vignette("intro",package="lumberjack")
+```
+
+### Code / issues:
+ \href{https://github.com/markvanderloo/}{\texttt{github.com/markvanderloo/}}
+
+### Contact
+ \texttt{@markvdloo} | \texttt{mark.vanderloo@gmail.com}
+
+\begin{picture}(0,0)
+\put(291,166){
+\includegraphics[height=0.9cm]{fig/download.png}
+}
+\put(291,119){
+\includegraphics[height=0.9cm]{fig/on.png}
+}
+\put(291,62){
+\includegraphics[height=1cm]{fig/bug.png}
+}
+\put(290,18){
+\includegraphics[height=0.8cm]{fig/contact.png}
+}
+\end{picture}
+
+
+
+

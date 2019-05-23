@@ -1,0 +1,483 @@
+---
+title: "From Official Statistics to Official Data Science"
+author: "Mark van der Loo, Statistics Netherlands"
+date: "Complutense University of Madrid, Spring 2019"
+output:
+  beamer_presentation:
+    fig_caption: false
+    include:
+      in_header: ../00tex/presheader.tex
+classoption: "aspectratio=169"
+---
+
+
+
+
+## Agenda
+
+
+1. Why are computing skills important? 
+    - Some personal observations.
+    - Experiences as a research methodologist
+2. Official Statistics as a (Data) Science
+
+# Observations
+
+## Example one
+
+Methodologist specifies
+
+$$
+\textrm{mean}(x) = \frac{x_1}{\pi_1} +\frac{x_2}{\pi_2}+\cdots+\frac{x_n}{\pi_n}
+$$
+
+Software developer implements
+
+```{r,eval=FALSE}
+sum(x)/3.14
+```
+
+## Example two
+
+
+Methodologist specifies
+
+$$
+\textrm{geometric\_mean}(x) = \sqrt[n]{x_1 \times x_2\times\cdots \times x_n}
+$$
+
+Software developer implements
+
+```{r}
+geom_mean = function(x) prod(x)^(1/length(x))
+```
+
+## Example two (continued)
+
+Software developer tests implementation
+```{r}
+geom_mean(c(4,4)) == sqrt(16)
+```
+
+User puts some actual data in: $1,2,\ldots,200$
+```{r}
+geom_mean(1:200)
+```
+
+##
+
+\begin{center}
+\includegraphics[height=6.5cm]{fig/onedoes.jpg}
+\end{center}
+
+
+## Lessons learned
+
+### Implementing methods is _not trivial_
+
+It is called _scientific computing_ or _numerical mathematics_, and it is a scientific field.
+
+
+
+### For (project) management in particular
+
+You need to be able to recognize these situations to put the right person on the job.
+
+
+\begin{picture}(0,0)
+\put(200,-60){
+\includegraphics[height=2cm]{fig/nummath.jpg}%
+\includegraphics[height=2cm]{fig/numrec.jpg}%
+}
+\end{picture}
+
+
+## A question to statistics managers
+
+Your 'computer person' retires or leaves. You need to hire someone that will
+modernize the systems developed by this person.
+
+a. What do you put in the job advertisement?
+b. How do you interview this person to asses maturity in (statistical) programming?
+
+## A question for strategic management
+
+### Core question
+
+Do you think that statistical computing is a core competence for the statistical office?
+
+### and if so,
+
+How much of it is needed (FTE)? Should there be associated career paths? $\ldots$
+
+
+# Experiences as a research methodologist
+
+
+## High-level process view (CSPA, GSIM)
+
+
+\begin{center}
+\includegraphics[height=4cm]{fig/datastep2.pdf}
+\end{center}
+
+\begin{center}
+Separation of concerns + Modular approach
+\end{center}
+
+
+## Slightly more realistic process view
+
+\begin{center}
+\includegraphics[height=0.7\textheight]{fig/dataflow.pdf}
+\end{center}
+
+
+## Data cleaning using R-based packages (1)
+
+```{r, eval=TRUE, echo=TRUE}
+library(validate)
+SBS2000 <- read.csv("SBS2000.csv")
+rules   <- validator(.file = "rules.R")
+```
+
+\begin{center}
+\includegraphics[height=3.5cm]{fig/data_and_rules.png}
+\end{center}
+
+## Data cleaning using R-based packages (2)
+
+```{r, fig.height=4}
+out <- confront(SBS2000, rules)
+plot(out)
+```
+
+
+## Data cleaning using R-based packages (3)
+
+```{r,echo=FALSE}
+set.seed(2)
+```
+
+```{r, message=FALSE, results='hide'}
+library(lumberjack); library(rspa); 
+library(simputation); library(errorlocate)
+
+SBS2000 %L>%                    
+    start_log( cellwise$new(key="id") ) %L>%  
+    replace_errors( rules ) %L>%
+    tag_missing() %L>%
+    impute_mf( . - id ~ . - id ) %L>%
+    match_restrictions( rules, eps=1E-8 ) %L>%
+    dump_log() -> clean_data
+```
+
+\begin{picture}(0,0)
+\put(250,50){}
+\end{picture}
+
+## Data cleaning using R-based packages (3)
+
+
+```{r, eval=FALSE, results='hide'}
+library(lumberjack); library(rspa); 
+library(simputation); library(errorlocate)
+
+SBS2000 %L>%                    
+    start_log( cellwise$new(key="id") ) %L>%  
+    replace_errors( rules ) %L>%
+    tag_missing() %L>%
+    impute_mf( . - id ~ . - id ) %L>%
+    match_restrictions( rules, eps=1E-8 ) %L>%
+    dump_log() -> clean_data
+```
+
+\begin{picture}(0,0)
+\put(250,50){\includegraphics[height=2.5cm]{fig/datastep2.pdf}}
+\end{picture}
+
+
+## Data cleaning using R-based packages (4)
+
+```{r, fig.height=4}
+out <- confront(clean_data, rules)
+plot(out)
+```
+
+
+## Data cleaning using R-based packages (5)
+
+\scriptsize{}
+```{r}
+read.csv("cellwise.csv") %L>% head(3)
+```
+\normalfont{}
+
+## What went into this?
+
+### Methodology
+
+Calculus, linear algebra, algorithm design, (convex) optimization, linear programming, formal logic,
+mathematical modeling.
+
+### Implementation
+
+Parsing and language theory, functional programming, object orientation,
+numerical methods,  algebraic data types. LOTS of programming
+experience, compiled languages, APIs and technical standards. Also: version
+control, documenting and testing, CI tools, UX design.
+
+
+
+
+
+
+
+## The Dolly Parton Principle
+
+
+### Dolly
+
+It takes a lot of money to look so cheap.
+
+
+
+### Me, writing software
+
+It takes a lot of thinking to look so simple.
+
+\begin{picture}(0,0)
+\put(220,-20){\includegraphics[height=4cm]{fig/dolly.jpg}}
+\end{picture}
+
+
+# Official Statistics as a (Data) Science
+
+## Data science skill set
+
+\begin{center}
+\includegraphics[height=6.5cm]{fig/dsvenn.jpg}
+\end{center}
+\hfill{}\scriptsize{Nolan and Temple Lang (2010) \emph{The American Statistician} \textbf{64}(2) 97--107}
+
+
+## Data science skill set
+
+\begin{center}
+\includegraphics[height=6.5cm]{fig/dsvenn2.png}
+\end{center}
+\hfill{}\scriptsize{Drew Conway (2013) \underline{\href{http://drewconway.com/zia/2013/3/26/the-data-science-venn-diagram}{blog post}}}
+
+## Data science skill set?
+
+\begin{center}
+\includegraphics[height=6.5cm]{fig/dsvenn3.pdf}
+\end{center}
+\hfill{}\scriptsize{Me, reproduced from memory as seen at \emph{The Internets} }
+
+## Types of data scientists
+
+\begin{center}
+\includegraphics[height=6.5cm]{fig/dsradar.png}
+\end{center}
+\hfill{}\scriptsize{Mango Solutions Data Science Radar}
+
+
+## Data Science
+
+\begin{quote}
+Science of planning for, acquisition, management, analysis of, and inference
+from data.
+\end{quote}
+
+\hfill{}\scriptsize{StatNSF (2014); De Veaux \emph{et al} 2017 \emph{Annu.~Rev.~Stat.} \textbf{4} 15--31}
+
+## Is data science a science?
+
+
+\begin{quote}
+[...] there is a solid case for some entity called ‘Data Science’ to be
+created, which would be a true science: facing essential questions of a lasting
+nature and using scientifically rigorous techniques to attack those questions
+\end{quote}
+
+\hfill{}\scriptsize{Donoho (2015) \emph{50 years of data science}.}
+
+
+## Key competencies of a data science major
+
+1. Computational and statistical thinking
+2. Mathematical foundations
+3. Model building and assessment
+4. Algorithms and software foundation
+5. Data curation
+6. Knowledge transference---communication and responsibility
+
+\hfill{}\scriptsize{De Veaux \emph{et al} 2017 \emph{Annu.~Rev.~Stat.} \textbf{4} 15--31}
+
+
+## Curriculum
+
+\begin{center}
+\includegraphics[height=6.5cm]{fig/veauxcurr.png}
+\end{center}
+\hfill{}\scriptsize{De Veaux \emph{et al} 2017 \emph{Annu.~Rev.~Stat.} \textbf{4} 15--31}
+
+
+
+## Extra subject areas of an official statistics major
+
+1. Macroeconomics
+2. Demography
+3. Ontologies and metadata
+3. Policy, governance, international context
+4. Privacy and data safety
+
+
+## Mark's Official Data Science Bachelors Curriculum
+
+
+\begin{center}
+{\includegraphics[height=7cm]{fig/ects.pdf}}
+\end{center}
+
+
+## Semester I
+
+- Calculus (6 ECTS)
+    - \scriptsize{Set theory, calculus on the real line, investigating functions (min, max, asymptotes), multivariate calculus, Lagrange multiplier method}
+- Linear algebra (6 ECTS)
+    - \scriptsize{Vectors and vector spaces, linear systems of equations and matrices, matrix inverse, eigenvalues, inner product spaces.}
+- Introduction to programming (4 ECTS)
+    - \scriptsize{Imperative programming, algorithm design, recursion, complexity, practical assignments.}
+- Public policy and administration (4 ECTS)
+    - \scriptsize{Government structure and institutions, policy-making and implementation, role of official statistics, international context, privacy}
+
+\begin{picture}(0,0)
+\put(200,-40){
+\includegraphics[height=2cm]{fig/calculus.jpg}%
+\includegraphics[height=2cm]{fig/linalg.jpg}%
+\includegraphics[height=2cm]{fig/algorithms.jpg}
+}
+\end{picture}
+
+    
+## Semester II
+
+- Probability and statistics I (6 ECTS)
+    - \scriptsize{Probability, discrete and continuous distributions, measures of location and variation, Bayes' rule, sampling distributions, estimation of mean and variance, CLT, ANOVA, linear models}.
+- Linear programming and optimization (4 ECTS)
+    - \scriptsize{Recognizing and modeling LP problems, simplex method, duality, sensitivity analysis, intro nonlinear optimization. Practical assignments using software tools.}
+- Programming with data I (4 ECTS)
+    - \scriptsize{Statistical analysis, data visualisation and reporting, programming skills and reproducibility, version control, testing, project.}
+- Macroeconomics (6 ECTS)
+    - \scriptsize{National Accounts, economic growth, labour market, consumption and investments, inflation, macro-economic equilibrium, budget policy and government debt. The main surveys.}
+
+\begin{picture}(0,0)
+\put(200,-40){
+\includegraphics[height=2cm]{fig/macroecon.jpg}%
+\includegraphics[height=2cm]{fig/probstat.jpg}%
+\includegraphics[height=2cm]{fig/linprog.jpg}%
+\includegraphics[height=2cm]{fig/r4ds.png}
+}
+\end{picture}
+
+## Semester III
+
+- Models in computational statistics (6 ECTS)
+    - \scriptsize{GLM, regularization, Tree models, Random Forest, SVM, unsupervised learning, model selection, lab with practical assignments.}
+- Probability and statistics II (4 ECTS)
+    - \scriptsize{Bayesian inference, Gibbs sampling and MCMC, maximum likelihood and Fisher information, latent models}
+- Programming with data II (4 ECTS)
+    - \scriptsize{Relational algebra and data bases, data representation, regular expressions, and technical standards, ontologies and metadata, practical assignments.}
+- Demography (6 ECTS)
+    - \scriptsize{Fertility, mortality, life table and decrement processes, age-specific rates and probabilities,
+    stable and nonstable population models, cohorts, data and data quality. The main surveys.}
+
+\begin{picture}(0,0)
+\put(200,-40){
+\includegraphics[height=2cm]{fig/statlearn.jpg}%
+\includegraphics[height=2cm]{fig/probstat.jpg}%
+\includegraphics[height=2cm]{fig/sdcr.jpg}%
+\includegraphics[height=2cm]{fig/demography.jpg}%
+}
+\end{picture}
+
+## Semester IV
+
+- Methods for official statistics I (4 ECTS)
+    - \scriptsize{Advanced survey methods, weighting and estimation, calibration, SAE, handling non-response}
+- Methods for official statistics II (4 ECTS)
+    - \scriptsize{Time series, seasonal adjustment, benchmarking and reconciliation, time series models}
+- Programming with data III (4 ECTS)
+    - \scriptsize{Infrastructure for computing with big data, map-reduce, key-value stores, project.}
+- Communication (4 ECTS)
+    - \scriptsize{Scientific and technical writing, principles of visualization, dissemination systems.}
+- Ethics and philosophy of science (2 ECTS)
+
+\begin{picture}(0,0)
+\put(120,-40){
+\includegraphics[height=2cm]{fig/sarndal.jpg}%
+\includegraphics[height=2cm]{fig/nonresponse.jpg}%
+\includegraphics[height=2cm]{fig/timeseries.jpg}%
+\includegraphics[height=2cm]{fig/benchmarking.jpg}%
+\includegraphics[height=2cm]{fig/bigdata.jpg}%
+\includegraphics[height=2cm]{fig/philo.jpg}%
+}
+\end{picture}
+
+## Semester V
+
+- Methods for official statistics III (4 ECTS)
+    - \scriptsize{Principles of data editing, Fellegi-Holt error localization, methods for imputation.}
+- Methods for official statistics IV (4 ECTS)
+    - \scriptsize{Information Security and Statistical Disclosure Control}
+- Research methods in social science (4 ECTS)
+    - \scriptsize{Questionnaire design and field research, measurement models and latent variables}
+- Elective course (4 ECTS)
+    - \scriptsize{In the area of social science, economics, econometrics, computer science, or math\&statistics}
+- Large programming project (4 ECTS)
+    - \scriptsize{E.g. a small production system, a dashboard, data cleaning system}
+
+\begin{picture}(0,0)
+\put(180,-40){
+\includegraphics[height=2cm]{fig/editing.jpg}%
+\includegraphics[height=2cm]{fig/sdcr.jpg}%
+\includegraphics[height=2cm]{fig/sdc.jpg}%
+}
+\end{picture}
+
+
+## Semester VI
+
+- Elective courses (8 ECTS)
+    - \scriptsize{Preparing for thesis research}
+- Bachelor's thesis (12 ECTS)
+    - \scriptsize{Research in Macroeconomy, Demography, or Methodology. Preferably at an
+    NSI or international organization. }
+
+
+## Some interesting research areas
+
+### Methodology
+
+- Complexity theory, econophysics, agent-based modeling
+- Network theory
+- Streaming data
+
+### Content / output
+
+- Beyond GDP
+- Globalization, regionalization
+- SDG, energy transition
+
+
+
+## Take-home message
+
+\begin{center}
+\Large Official statistics is a (data) \emph{science}, applied to society.
+\end{center}
+
+
+

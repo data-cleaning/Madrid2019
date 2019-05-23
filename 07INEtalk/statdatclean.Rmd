@@ -1,0 +1,696 @@
+---
+title: "Systematic Data Cleaning for Official Statistics with R"
+author: "Mark van der Loo"
+date: "May 8 2019 | INE Spain"
+output:
+  beamer_presentation:
+    fig_caption: false
+    latex_engine: xelatex
+    keep_tex: false
+    includes:
+      in_header: ../00tex/presheader2.tex
+classoption: "aspectratio=169"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+## Agenda
+
+- R at the office
+- Data processing
+- R tools for data cleaning
+- Detailed examples + conclusions
+- Awesome official statistics software
+
+# R at the office
+
+## Introduction of R at statistics netherlands
+
+- `S+` and `R` First Used as research tool at dpt of methodology.
+- `R` introduced as strategic tool in 2010
+    - Introductory course (methods dpt)
+    - User meetings
+    - Wiki
+    - Code standars, IT standards
+- Currently 100+ users, course by stats dpts.
+
+
+## Use of R at Statistics Netherlands
+
+### Throughout the office. 
+
+- Deriving the business cycle indicator
+- Analyzing supply-and-demand tables
+- Tourism statistics
+- Computing HSMR
+- Editing health care institute data
+- Animal population statistics
+- $\vdots$
+
+\begin{picture}(0,0)
+\put(200,20){\includegraphics[height=4cm]{fig/conjunctuurklok.png}}
+\end{picture}
+
+## Installation and infrastructure
+
+### Current situation
+
+- Central installation of R and RStudio, accessible to all in P-environment.
+- 8-core/32G Remote Desktop Servers for heavier interactive work
+- Batch environment for scheduled tasks
+
+### Future situation
+
+- RStudio Server Pro
+
+### In both cases
+
+- Curated set of pre-installed packages
+- Extra packages installable via local CRAN repository
+- Older versions of R remain accessible after upgrade
+
+
+## More information
+
+
+\begin{columns}
+  \begin{column}{0.3\textwidth}
+    \includegraphics[width=\textwidth]{fig/kowarik2018using.png}
+  \end{column}
+  \begin{column}{0.5\textwidth}
+    A. Kowarik and M. van der Loo. \emph{Romanian 
+    Statistical Review} \textbf{1/2018} 15--29.
+  \end{column}
+\end{columns}
+
+
+
+
+
+
+# Data processing
+
+## (part of the) Statistical Value Chain
+
+\begin{center}
+\includegraphics[height=3cm]{fig/valuechain.pdf}
+\end{center}
+
+
+### Notes
+
+- This part only pertains to the data processing stage. Collection, design,
+dissemination is not included.
+- The fixed points are well-defined statistical products.
+
+
+## (part of the) SVC and GSBPM
+
+\begin{center}
+\includegraphics[height=6cm]{fig/GSBPMSVC.png}
+\end{center}
+
+
+## The SVC: Remarks
+
+- Actual data processing is not necessarily linear across the chain
+- In production architectures a more flexible model is often used where
+the definition of interfaces between processing steps play a crucial role.
+The chain shown here is a general example covering most steps in some way.
+- The general idea scales really well.
+
+## More information
+
+\begin{columns}
+\begin{column}{0.3\textwidth}
+\includegraphics[width=\textwidth]{fig/struijs2013redesign.png}
+\end{column}
+\begin{column}{0.7\textwidth}
+P. Struijs, A. Camstra, R. Renssen and B. Braaksma. \emph{Journal of Official Statistics}
+\textbf{29/1} 2013 49--71.
+\end{column}
+\end{columns}
+
+
+
+# R tools for data cleaning
+
+## Data cleaning
+
+\begin{center}
+\includegraphics[height=2.5cm]{fig/valuechain1.png}
+\end{center}
+
+
+## High-level process view (CSPA, GSIM)
+
+
+\begin{center}
+\includegraphics[height=4cm]{fig/datastep2.pdf}
+\end{center}
+
+\begin{center}
+Separation of concerns + Modular approach
+\end{center}
+
+
+## Slightly more realistic process view
+
+\begin{center}
+\includegraphics[height=0.7\textheight]{fig/dataflow.pdf}
+\end{center}
+
+## What does that mean for implementation?
+
+### Our approach
+
+- Separation of concerns $\to$ DSL
+- Modularity `==` **UNIX philosophy**
+    - each tool doing one thing, really well.
+    - tools should integrate with ease
+- Design for **humans**
+- In **open source**
+- **Reuse** existing tools where possible
+
+### R
+
+- Free/Libre and open source
+- Well-established, many users
+- Very flexible (functional PL)
+- Best package system
+
+
+\begin{picture}(0,0)
+\put(220,70){\includegraphics[height=2cm]{fig/R_logo.png}}
+\end{picture}
+
+## By the way
+
+\vspace{2cm}
+
+\begin{center}
+\emph{R is probably the most thoroughly validated statistics software on Earth.}
+\end{center}
+\hfill{}\scriptsize{Uwe Ligges, CRAN maintainer (useR!2017)}
+
+\begin{picture}(0,0)
+\put(250,60){\includegraphics[height=3.5cm]{fig/uwe.png}}
+\end{picture}
+
+## R tools, available on CRAN
+
+\begin{center}
+\includegraphics[height=0.7\textheight]{fig/stack.png}
+\end{center}
+
+
+## Implementation: preparation
+
+```{r, eval=FALSE,echo=TRUE}
+dat    <- read.csv("data/SBS2000.csv")
+rules  <- validate::validator(.file="data/rules.R")
+logger <- validate::lbj_rules(rules)
+```
+
+\begin{center}
+\includegraphics[height=3.5cm]{fig/data_and_rules.png}
+\end{center}
+
+
+## Implementation: data cleaning
+
+```{r,eval=FALSE, echo=TRUE}
+dat %L>%                    
+    lumberjack::start_log(logger) %L>%  
+    errorlocate::replace_errors(rules) %L>%
+    tag_missing() %>%
+    simputation::impute_mf(. – id ~ . - id) %L>%
+    rspa::match_restrictions(rules, eps=1E-8) %L>%
+    dump_log() ->    
+    clean_data
+```
+
+## Results
+
+\begin{picture}(0,0)
+\put(0,-20){\includegraphics[height=4cm]{fig/before.png}}
+\put(30,-130){\includegraphics[height=4cm]{fig/after.png}}
+\put(150,-100){\includegraphics[height=6cm]{fig/rules_log.png}}
+\end{picture}
+
+
+# Detailed examples
+
+## The `validate` package
+
+### Purpose: data checking (validation)
+
+- Define, apply, and maintain data validation rules.
+- Summarize, investigate, export validation results.
+- Separate domain knowledge from programming skills.
+
+### Example data
+
+```{r, echo=TRUE}
+library(validate)
+SBS2000 <- read.csv("data/SBS2000.csv")
+rules <- validator(
+  staff >= 0
+  , if (staff > 0) staff.costs > 0
+  , turnover + other.rev == total.rev
+  , turnover >= 0, other.rev >= 0
+)
+```
+
+## Confronting data with rules; plotting, summarizing
+
+
+```{r, echo=TRUE,fig.height=4.5}
+result <- confront(SBS2000, rules, key="id")
+plot(result)
+```
+
+
+## Confronting data with rules; plotting, summarizing
+
+```{r, echo=TRUE}
+summary(result)
+```
+
+## Validation results are data
+
+```{r, echo=TRUE}
+head( as.data.frame(result) )
+```
+
+## Validation rules are also data
+
+\scriptsize{}
+```{r, echo=TRUE}
+rules
+# rules can have rich metadata
+rules[[2]]
+```
+\normalfont{}
+
+## Validation rules can be investigated
+
+```{r, echo=TRUE}
+variables(rules)
+```
+
+### Are all variables in the data covered by the rules?
+```{r, echo=TRUE}
+all( variables(SBS2000) %in% variables(rules) )
+```
+
+## Package overview
+
+\begin{center}
+\includegraphics[height=0.7\textheight]{fig/overview.pdf}
+\end{center}
+
+## Example: rules with rich metadata (YAML)
+
+```{}
+---
+options:
+  raise: none
+  lin.eq.eps: 1.0e-08
+  lin.ineq.eps: 1.0e-08
+---
+rules:
+- expr: turnover >= 0
+  name: 'rule-01'
+  label: 'nonnegative income'
+  description: | 
+    'Income cannot be negative (unlike in the
+     definition of the tax office)'
+  created: 2018-06-05 14:44:06
+  origin: rules.txt
+  meta: []
+```
+
+
+# Imputation
+
+
+
+
+## Imputation in R
+
+### Specialized packages
+
+  - Many available (VIM, mice, Amelia, mi, $\ldots$)
+  - Interfaces vary (a lot)
+
+### DIY with model/predict
+
+```{r, eval=FALSE, echo=TRUE}
+m <- lm(Y ~ X, data=mydata)
+ina <- is.na(mydata$Y)
+mydata[ina, "Y"] <- predict(m, newdata = mydata[ina,])
+```
+
+- Code duplication, doesn't always work
+
+
+
+\note{
+When I set up an imputation system, I think about the problem, implement and 
+test it, evaluate and repeat. These widely varying interfaces slow down this
+cycle significantly.
+}
+
+
+
+## Goal of the `simputation` package
+
+### Provide
+
+- a _uniform interface_,
+- with _consistent behaviour_,
+- across _commonly used methodologies_
+
+
+### To facilitate
+
+- experimentation 
+- configuration for production
+
+
+## A first example
+
+```{r}
+library(magrittr)
+library(simputation)
+data(SBS2000,package="validate")
+```
+
+```{r, echo=TRUE }
+dat <- SBS2000[4:7]
+dat %>% head(3)
+```
+
+```{r, echo=TRUE}
+dat %>% impute_lm(other.rev ~ turnover) %>% head(3)
+```
+
+
+
+
+## The `simputation` package
+
+### An imputation prodedure is specified by
+
+1. The variable to impute
+2. An imputation model
+3. Predictor variables
+
+
+
+### The simputation interface
+
+```
+impute_<model>(data
+  , <imputed vars> ~ <predictor vars>
+  , [options])
+```
+
+## Experimenting with methods
+
+```{r, echo=TRUE}
+# linear model
+dat %>% impute_lm(other.rev ~ turnover) %>% head(3)
+```
+
+```{r, echo=TRUE}
+# robost linear model (M-estimator)
+dat %>% impute_rlm(other.rev ~ turnover) %>% head(3)
+```
+
+
+
+## Example (ct'd): chaining methods
+
+```{r, echo=TRUE}
+dat %>% 
+  impute_rlm( other.rev ~ turnover ) %>%
+  impute_rlm( other.rev ~ staff    ) %>%
+  head(3)
+```
+
+
+## Example: grouping
+
+```{r, echo=TRUE, eval=FALSE}
+SBS2000 %>% impute_rlm(total.rev ~ turnover | size) 
+
+# or, using dplyr::group_by
+SBS2000 %>% 
+  group_by(size) %>%
+  impute_rlm(total.rev ~ turnover)
+```
+
+
+## Example: add random residual
+
+```{r, echo=TRUE, eval=FALSE}
+SBS2000 %>% impute_rlm(total.rev ~ turnover | size,
+                         add_residual="observed")
+
+SBS2000 %>% impute_rlm(total.rev ~ turnover | size,
+                         add_residual="normal") 
+```
+
+
+## Example: proxy imputation
+
+```{r, echo=TRUE, eval=FALSE}
+# impute VAT value where turnover is unavailable
+SBS2000 %>% impute_proxy(turnover ~ vat)
+```
+
+```{r, echo=TRUE, eval=FALSE}
+# transformations are also allowed
+SBS2000 %>% impute_proxy(other.rev ~ total.rev - turnover)
+```
+
+## Example: train on `A`, apply to `B`
+
+```{r,echo=TRUE, eval=FALSE}
+m <- MASS::rlm(other.rev ~ turnover + staff
+               , data=SBS1999)
+impute(SBS2000, other.rev ~ m) 
+```
+
+
+
+
+## Currently available methods
+
+- Model based (optional random residual):
+    - standard/$M$/elasticnet regression 
+    - CART models and Random forest
+- Multivariate
+    - EM-based imputation
+    - missForest (=iterative random forest)
+- Donor imputation (including various donor pool specifications)
+    - k-nearest neigbour (based on [gower](https://cran.r-project.org/package=gower)'s distance)
+    - sequential, random hotdeck
+    - Predictive mean matching
+- Other
+    - (groupwise) median imputation (optional random residual)
+    - Proxy imputation: copy another variable or use a simple transformation
+      to compute imputed values.
+
+
+## Tracking changes in data with `lumberjack`
+
+\begin{center}
+\includegraphics[]{fig/datastep2.pdf}
+\end{center}
+
+\begin{picture}(0,0)
+\put(230,-10){\includegraphics[height=2cm]{fig/lumberjack.jpg}}
+\end{picture}
+
+## How to compare two versions of a dataset? (1)
+
+Count changes in cells
+
+\begin{center}
+\includegraphics[width=0.62\textwidth]{fig/cellsplit.pdf}%
+\includegraphics[width=0.38\textwidth]{fig/cellcount.pdf}
+\end{center}
+
+## How to compare two versions of a dataset? (2)
+
+Count changes in rule violations
+
+\begin{center}
+\includegraphics[width=0.62\textwidth]{fig/rulesplit.pdf}%
+\includegraphics[width=0.38\textwidth]{fig/rules_log.png}
+\end{center}
+
+
+## How to compare two versions of a dataset? (3)
+
+### There are more ways
+
+- Comparing cell-by cell
+- Following summary statistics (e.g. means)
+- $\vdots$
+
+## The `lumberjack` package
+
+- Works for _any_ data transformation function (no special protocols required)
+- What to log is _user-definable_, and _extensible_
+- Near-zero change in common R workflow
+
+## Simple example
+
+```{r}
+library(lumberjack)
+```
+
+```{r,echo=TRUE}
+SBS2000 %L>%
+  start_log(cellwise$new(key="id")) %L>%
+  impute_const(other.rev ~ 0) %L>%
+  dump_log() -> imputed_data
+```
+
+\scriptsize{}
+```{r,echo=TRUE}
+read.csv("cellwise.csv") %>% head(3)
+```
+\normalfont{}
+
+# Conclusions 
+
+## Lessons learned
+
+### (1) Modularity 
+
+Requires careful research. Basic actions (like data validation, logging) preferably defined with 
+mathemtical precision.
+
+
+### (2) Separation of concerns, building for humans
+
+- Follows, if (1) has been thought through well enough.
+- Building something that _lasts_ still requires careful thinking, and sometimes new ideas.
+
+### (3) Implementing
+
+- Using FOSS tools (here: R) makes the design $\to$ build $\to$ test quick and easy.
+- The fact that R is a functional programming language offers abstractions that are much harder
+to build in non-functional languages.
+- Still needs deep thinking sometimes.
+
+## The Dolly Parton principle
+
+\begin{center}
+\includegraphics[height=6cm]{fig/dolly.jpg}
+\end{center}
+
+
+
+
+# The awesomelist of official statistics software
+
+## What are awesomelists?
+
+\begin{center}
+\includegraphics[height=4cm]{fig/awesome.png}
+\end{center}
+
+### Awesomlist
+
+- A _curated_ list of things, considered _AWESOME_ by the curator(s)
+- Hosted on github
+
+\hfill{}\scriptsize{Sindre Sorhus, github.com/sindresorhus/awesome}
+
+## Awesome official statistics software
+
+### Official statistics software is _AWESOME_ if and only if
+
+1. It is free, open source and available for download
+2. It is confirmed to be used in the production of official statistics by at least one institute _or_
+3. it provides access to official statistics publications
+
+### Also
+
+_We prefer packages that are reasonably easy to install and use, that have at least one stable version, and that are actively maintained._
+
+\vspace{1ex}
+
+\hfill{}\scriptsize{}{O. ten Bosch and M. van der Loo, www.awesomeofficialstatistics.org}
+
+
+## Awesome official statistics software
+
+
+\begin{center}
+\includegraphics[height=6cm]{fig/awesomelist.png}
+\end{center}
+
+## Parts of GSBPM covered
+
+\begin{center}
+\includegraphics[height=6cm]{fig/awesomeGSBPM.png}
+\end{center}
+
+
+## If you are awesome, you get to wear the _BADGE_
+
+\begin{center}
+\includegraphics[height=6cm]{fig/vim.png}
+\end{center}
+
+\hfill{}\scriptsize{M. Temple \emph{et al.} https://github.com/statistikat/VIM\phantom{fooobaar}}
+
+
+## More information
+
+
+\begin{columns}
+  \begin{column}{0.5\textwidth}
+    \includegraphics[height=0.7\textheight]{fig/sdcr.jpg}%
+  \end{column}
+  \begin{column}{0.5\textwidth}
+    \textbf{Contact}
+    \begin{itemize}
+    \item @markvdloo
+    \item github.com/markvanderloo
+    \item mplo@cbs.nl
+    \end{itemize}
+    $$
+    \;
+    $$
+  
+  
+   \textbf{Book}
+    MPJ van der Loo and E de Jonge (2018) John Wiley \& Sons.
+   $$
+   \;
+   $$
+   \textbf{More FOSS}
+   \href{www.awesomeofficialstatistics.org}{www.awesomeofficialstatistics.org}
+   
+    
+  \end{column}
+\end{columns}
+
+
+
+
+
+
+
+
